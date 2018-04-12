@@ -1,0 +1,63 @@
+Dim Periodo
+Dim Fecha_Inicial
+Dim Fecha_Final
+Dim Comprobante
+Dim query 
+Dim fso, tf
+Dim cmdLine, oshell
+
+Fecha_Inicial = inputbox("Ingresa la fecha inicial, en formato dd/mm/yyyy")
+Fecha_Final = inputbox("Ingresa la fecha Final, en formato dd/mm/yyyy")
+
+Fecha=MID(Fecha_Inicial,7,4)&MID(Fecha_Inicial,4,2)&MID(Fecha_Inicial,1,2)
+FechaI=MID(Fecha_Inicial,4,2)&"/"&MID(Fecha_Inicial,1,2)&"/"&MID(Fecha_Inicial,7,4)
+FechaF=MID(Fecha_Final,4,2)&"/"&MID(Fecha_Final,1,2)&"/"&MID(Fecha_Final,7,4)
+
+IF len(Fecha_Inicial) <> 10 or len(Fecha_Final) <> 10 THEN
+	MSGBOX("Alguna de las fechas ingresadas esta errada, intente nuevamente, recuerde que deben estar en formato yyyy-mm-dd")
+ELSE
+stop
+Set objFSO=CreateObject("Scripting.FileSystemObject")
+Set oShell = CreateObject("WSCript.shell")
+outFile="C:\Temp\Cartama\Mandato\Cartama_Facturas.bat"
+sCmd = "C:\Temp\Cartama\Mandato\Cartama_Facturas.bat"
+Set objFile = objFSO.CreateTextFile(outFile,True)
+
+Set conn = CreateObject("ADODB.Connection") 
+Set rs = CreateObject("ADODB.Recordset")
+Set rs1 = CreateObject("ADODB.Recordset")
+Set rs2 = CreateObject("ADODB.Recordset")
+Set rs3 = CreateObject("ADODB.Recordset")
+
+Set conn = CreateObject("ADODB.Connection") 
+Set rs = CreateObject("ADODB.Recordset")
+conn.Open " Provider = SQLOLEDB ; Data Source=kxg0apxk2p.database.windows.net;User ID=movinova;Password=movi1111@;Initial Catalog=db_Cartama"
+
+query1 = "SELECT         Id_Empresa, Empresa FROM            dbo.tbl_M_Empresa WHERE        (Rol = 2) "
+
+Set rs = conn.execute(query1)
+
+while not rs.eof
+	Empresa = rs("Id_Empresa")
+	EmpresaNomre = rs("Empresa")
+    
+	query = "~SELECT Fecha, Transaccion, consecutivo, Nit_Proveedor, concepto, Factura, Factura2, concepto_pago, Fijo, Valor_Total, Fijo_2, Centro_Costos, Tipo_Asiento, cuenta, Base_Rte, nit_contable, Comentarios FROM dbo.View_Cartama_Distribucion_Facturas_Mandante WHERE (Id_Empresa =  " & Empresa & ") AND (Fecha >= '" & FechaI & "') AND (Fecha <= '" & FechaF & "') ~"
+	cmdLine = "bcp " & query & " queryout C:\Temp\Cartama\Mandato\" & Fecha  & "_" & "Facturas_Mandato" & "_Empresa-" & REPLACE(EmpresaNomre," ","_") & ".txt -S kxg0apxk2p.database.windows.net -d db_Cartama -U movinova -P movi1111@ -c -t \t" 
+
+	objFile.Writeline REPLACE(cmdLine,"~","""")
+	'objFile.Writeline "set /p DUMMY=Hit ENTER to continue..." & vbCrLf
+
+	rs.movenext
+wend
+
+query = "~SELECT Fecha, Consecutivo, Transaccion, Nit_Proveedor, Concepto, Factura, Numero_Fac, Concepto_Pago, Fijo, Valor, Fijo_2, [Centro Costos 1], Tipo_Asiento, Cuenta, Base, Nit_Contable, Comentarios FROM dbo.View_Cartama_Distribucion_Facturas_Mandatario WHERE (Fecha >= '" & FechaI & "') AND (Fecha <= '" & FechaF & "')~"
+cmdLine = "bcp " & query & " queryout C:\Temp\Cartama\Mandato\" & Fecha  & "_" & "Facturas_Mandato" & "_Avofruit" & ".txt -S kxg0apxk2p.database.windows.net -d db_Cartama -U movinova -P movi1111@ -c -t \t" 
+
+objFile.Writeline REPLACE(cmdLine,"~","""")
+'objFile.Writeline "set /p DUMMY=Hit ENTER to continue..." & vbCrLf
+
+objFile.Close
+oShell.Run sCmd, 0, False
+
+msgbox("Proceso Finalizado")
+END IF
